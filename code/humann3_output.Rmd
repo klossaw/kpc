@@ -1,0 +1,67 @@
+---
+title: "humann3_plot_output"
+output: html_document
+---
+
+```{bash, humann3 join the path abundance table}
+cd ~/projects/kpc/analysis/qzhang/mouse/microbiota/humann3_v2
+ln -s /cluster/home/wyye_jh/projects/kpc/analysis/qzhang/mouse/microbiota/humann3/humann3_output ./output
+mkdir -p metaphlan
+conda activate humann3
+
+merge_metaphlan_tables.py output/*/*_humann_temp/*_metaphlan_bugs_list.tsv | \
+      sed 's/_metaphlan_bugs_list//g' > ./metaphlan/taxonomy.tsv
+mkdir -p pathabund; cp output/*/*_pathabundance.tsv ./pathabund/
+humann_join_tables --input ./pathabund/ --file_name pathabundance --output ./pathabundance.tsv
+mkdir -p genefam; cp output/*/*_genefamilies.tsv ./genefam/
+humann_join_tables --input ./genefam/ --file_name genefamilies --output ./genefamilies.tsv
+sed -i 's/_Abundance//g' pathabundance.tsv; sed -i 's/_Abundance-RPKs//g' genefamilies.tsv
+
+humann_renorm_table --input ./pathabundance.tsv --units relab --output ./pathabundance_relab.tsv
+humann_renorm_table --input ./genefamilies.tsv --units relab --output ./genefamilies_relab.tsv
+
+mkdir -p path_plot; cd path_plot
+# Rscript -e "path_df=read.delim('../pathabundance.tsv', check.names=F);"
+humann_split_stratified_table --input ../pathabundance_relab.tsv --output ./
+
+time for i in `cat humann_path_abund_kpc.tsv | cut -f 1 | tail -n+4`; do humann_barplot -i ../kpc_pathabund.tsv -f ${i} --focal-metadata stage --last-metadata stage --sort sum metadata -o kpc_path/${i}_stage.png --scaling logstack; done > ./humann_path_bar.log 2>&1 &
+
+
+
+```
+
+
+```{bash, environment 'microbes' creation and 'cd-hit' installation}
+# 'cause the low speed, cd-hit could not be installed
+# mamba create microbes
+# mamba install cd-hit -c bioconda
+
+# change to 'micromamba'
+micromamba create microbes
+micromamba activate microbes
+micromamba install cd-hit -c bioconda
+
+# create another environment called 'eggnog' and install 'eggnog-mapper'
+# 'cause the software existed in the channel is eggnog-mapper=1.0.0,
+# which depends on python 2.7 
+micromamba create eggnog
+# micromamba install eggnog-mapper 
+# - nothing provides python 2.7* needed by eggnog-mapper-1.0.0-py27_0
+# error    libmamba Could not solve for environment specs
+# micromamba install eggnog-mapper=2.1.8 -y -c bioconda
+# error    libmamba Could not solve for environment specs
+pip install eggnog-mapper # version 2.1.9
+# the dependencies are under '/cluster/home/danyang_jh/.local/lib/python3.7/site-packages'
+rsync -avzP ~/.local/* danyang_jh@10.5.0.2:~/.local/
+
+```
+
+
+```{bash, translate nucletides and annotate the functions}
+
+
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
